@@ -1,4 +1,3 @@
-Student-grades
 # student-grades
 A C++ application that manages students (first name, surname,
 homework results and exam result) and calculates their final grade.
