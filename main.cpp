@@ -1,8 +1,10 @@
 #include <algorithm>
 #include <cstdlib>
 #include <ctime>
+#include <fstream>
 #include <iomanip>
 #include <iostream>
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -13,19 +15,17 @@ private:
     std::vector<double> homeworkScores;
     double examScore;
     double finalGrade;
-    std::string method; // "Average" or "Median"
+    std::string method;
 
 public:
-    // Default constructor
     Person() : firstName(""), lastName(""), examScore(0.0), finalGrade(0.0) {
     }
 
-    // Parameterized constructor
     Person(std::string fName, std::string lName, double exam)
         : firstName(fName), lastName(lName), examScore(exam), finalGrade(0.0) {
     }
 
-    // Copy constructor
+    // Rule of three: copy constructor
     Person(const Person& other)
         : firstName(other.firstName),
           lastName(other.lastName),
@@ -35,7 +35,7 @@ public:
           method(other.method) {
     }
 
-    // Copy assignment operator
+    // Rule of three: copy assignment operator
     Person& operator=(const Person& other) {
         if (this != &other) {
             firstName = other.firstName;
@@ -48,11 +48,14 @@ public:
         return *this;
     }
 
-    // Destructor
+    // Rule of three: destructor
     ~Person() {
     }
 
-    // Input overload
+    const std::string& getFirstName() const { return firstName; }
+    const std::string& getLastName() const { return lastName; }
+
+    // Input overload (keyboard)
     friend std::istream& operator>>(std::istream& in, Person& p) {
         std::cout << "First name: ";
         in >> p.firstName;
@@ -66,114 +69,110 @@ public:
             std::cout << "Enter homework score: ";
             in >> score;
             p.homeworkScores.push_back(score);
-
             std::cout << "Add another homework score? (y/n): ";
             in >> more;
         }
 
         std::cout << "Exam score: ";
         in >> p.examScore;
-
         return in;
     }
 
-    // Output overload (formatted for the table)
+    // Output overload: one table row (Average | Median)
     friend std::ostream& operator<<(std::ostream& out, const Person& p) {
         out << std::left << std::setw(12) << p.firstName
             << std::setw(14) << p.lastName
-            << std::right << std::setw(10) << std::fixed << std::setprecision(2)
-            << p.finalGrade;
+            << std::right << std::fixed << std::setprecision(2)
+            << std::setw(14) << p.averageGrade()
+            << " | "
+            << std::setw(11) << p.medianGrade();
         return out;
     }
 
-    // Calculate final grade using average of homework
-    void calculateFinalAverage() {
+    double averageGrade() const {
         double sum = 0.0;
-        for (double score : homeworkScores) {
-            sum += score;
-        }
-        double homeworkAvg = (homeworkScores.empty()) ? 0.0 : sum / homeworkScores.size();
+        for (double s : homeworkScores) sum += s;
+        double avg = homeworkScores.empty() ? 0.0 : sum / homeworkScores.size();
+        return 0.4 * avg + 0.6 * examScore;
+    }
 
-        finalGrade = 0.4 * homeworkAvg + 0.6 * examScore;
+    double medianGrade() const {
+        std::vector<double> sorted = homeworkScores;
+        std::sort(sorted.begin(), sorted.end());
+        size_t n = sorted.size();
+        double med = 0.0;
+        if (n > 0) {
+            if (n % 2 == 0) med = (sorted[n / 2 - 1] + sorted[n / 2]) / 2.0;
+            else med = sorted[n / 2];
+        }
+        return 0.4 * med + 0.6 * examScore;
+    }
+
+    void calculateFinalAverage() {
+        finalGrade = averageGrade();
         method = "Average";
     }
 
-    // Calculate final grade using median of homework
     void calculateFinalMedian() {
-        std::vector<double> sorted = homeworkScores;
-        std::sort(sorted.begin(), sorted.end());
-
-        double homeworkMedian;
-        size_t n = sorted.size();
-        if (n == 0) {
-            homeworkMedian = 0.0;
-        } else if (n % 2 == 0) {
-            homeworkMedian = (sorted[n / 2 - 1] + sorted[n / 2]) / 2.0;
-        } else {
-            homeworkMedian = sorted[n / 2];
-        }
-
-        finalGrade = 0.4 * homeworkMedian + 0.6 * examScore;
+        finalGrade = medianGrade();
         method = "Median";
     }
 
-    // Randomly generate homework scores and exam score
     void generateRandom(int numHomework) {
         homeworkScores.clear();
         for (int i = 0; i < numHomework; i++) {
-            homeworkScores.push_back(rand() % 11); // 0 to 10
+            homeworkScores.push_back(rand() % 11);
         }
-        examScore = rand() % 11; // 0 to 10
+        examScore = rand() % 11;
+    }
+
+    // Read one line from the file: Name Surname HW1 ... HWn Exam
+    bool readFromLine(const std::string& line) {
+        std::istringstream ss(line);
+        if (!(ss >> firstName >> lastName)) return false;
+        std::vector<double> values;
+        double v;
+        while (ss >> v) values.push_back(v);
+        if (values.empty()) return false;
+        examScore = values.back();
+        values.pop_back();
+        homeworkScores = values;
+        return true;
     }
 };
 
 int main() {
-    srand(static_cast<unsigned int>(time(0)));
-
-    int numStudents;
-    std::cout << "How many students? ";
-    std::cin >> numStudents;
-
-    std::vector<Person> students(numStudents);
-
-    std::cout << "Generate random scores instead of manual input? (y/n): ";
-    char randomChoice;
-    std::cin >> randomChoice;
-
-    for (int i = 0; i < numStudents; i++) {
-        std::cout << "\n--- Student " << (i + 1) << " ---\n";
-        if (randomChoice == 'y' || randomChoice == 'Y') {
-            std::string fName, lName;
-            std::cout << "First name: ";
-            std::cin >> fName;
-            std::cout << "Last name: ";
-            std::cin >> lName;
-            students[i] = Person(fName, lName, 0.0);
-            students[i].generateRandom(5); // 5 random homework scores
-        } else {
-            std::cin >> students[i];
-        }
+    std::ifstream file("Students.txt");
+    if (!file) {
+        std::cout << "Error: cannot open Students.txt\n";
+        return 1;
     }
 
-    std::cout << "\nChoose calculation method - (a)verage or (m)edian: ";
-    char choice;
-    std::cin >> choice;
+    std::vector<Person> students;
+    std::string line;
+    std::getline(file, line); // skip the header line
 
-    std::string methodLabel;
-    for (Person& p : students) {
-        if (choice == 'm' || choice == 'M') {
-            p.calculateFinalMedian();
-            methodLabel = "Final_Point(Med.)";
-        } else {
-            p.calculateFinalAverage();
-            methodLabel = "Final_Point(Aver.)";
+    while (std::getline(file, line)) {
+        Person p;
+        if (p.readFromLine(line)) {
+            students.push_back(p);
         }
     }
+    file.close();
 
-    std::cout << "\n" << std::left << std::setw(12) << "Name"
-               << std::setw(14) << "Surname"
-               << std::right << std::setw(10) << methodLabel << "\n";
-    std::cout << std::string(43, '-') << "\n";
+    // Sort by surname, then by name
+    std::sort(students.begin(), students.end(),
+              [](const Person& a, const Person& b) {
+                  if (a.getLastName() != b.getLastName())
+                      return a.getLastName() < b.getLastName();
+                  return a.getFirstName() < b.getFirstName();
+              });
+
+    std::cout << std::left << std::setw(12) << "Name"
+              << std::setw(14) << "Surname"
+              << std::right << std::setw(14) << "Final (Avg.)"
+              << " | " << std::setw(11) << "Final (Med.)" << "\n";
+    std::cout << std::string(53, '-') << "\n";
 
     for (const Person& p : students) {
         std::cout << p << "\n";
