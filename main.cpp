@@ -141,26 +141,53 @@ public:
     }
 };
 
-int main() {
-    std::ifstream file("Students.txt");
-    if (!file) {
-        std::cout << "Error: cannot open Students.txt\n";
-        return 1;
-    }
-
+ int main() {
+    srand(static_cast<unsigned int>(time(0)));
     std::vector<Person> students;
-    std::string line;
-    std::getline(file, line); // skip the header line
 
-    while (std::getline(file, line)) {
-        Person p;
-        if (p.readFromLine(line)) {
-            students.push_back(p);
+    std::cout << "Source des donnees: 1) clavier  2) aleatoire  3) fichier Students.txt : ";
+    int mode;
+    std::cin >> mode;
+
+    if (mode == 3) {
+        std::ifstream file("Students.txt");
+        if (!file) {
+            std::cout << "Error: cannot open Students.txt\n";
+            return 1;
+        }
+        std::string line;
+        std::getline(file, line); // skip header
+        while (std::getline(file, line)) {
+            Person p;
+            if (p.readFromLine(line)) students.push_back(p);
+        }
+    } else {
+        int n;
+        std::cout << "Combien d'etudiants ? ";
+        std::cin >> n;
+        for (int i = 0; i < n; i++) {
+            std::cout << "\n--- Etudiant " << (i + 1) << " ---\n";
+            if (mode == 1) {
+                Person p;
+                std::cin >> p;
+                students.push_back(p);
+            } else {
+                std::string fName, lName;
+                std::cout << "First name: ";
+                std::cin >> fName;
+                std::cout << "Last name: ";
+                std::cin >> lName;
+                Person p(fName, lName, 0.0);
+                p.generateRandom(5);
+                students.push_back(p);
+            }
         }
     }
-    file.close();
 
-    // Sort by surname, then by name
+    char c;
+    std::cout << "\nMethode: (a)verage, (m)edian ou (b)oth : ";
+    std::cin >> c;
+
     std::sort(students.begin(), students.end(),
               [](const Person& a, const Person& b) {
                   if (a.getLastName() != b.getLastName())
@@ -168,15 +195,21 @@ int main() {
                   return a.getFirstName() < b.getFirstName();
               });
 
-    std::cout << std::left << std::setw(12) << "Name"
-              << std::setw(14) << "Surname"
-              << std::right << std::setw(14) << "Final (Avg.)"
-              << " | " << std::setw(11) << "Final (Med.)" << "\n";
-    std::cout << std::string(53, '-') << "\n";
+    std::cout << "\n" << std::left << std::setw(12) << "Name"
+              << std::setw(14) << "Surname" << std::right;
+    if (c != 'm' && c != 'M') std::cout << std::setw(14) << "Final (Avg.)";
+    if (c == 'b' || c == 'B') std::cout << " |";
+    if (c != 'a' && c != 'A') std::cout << std::setw(14) << "Final (Med.)";
+    std::cout << "\n" << std::string(54, '-') << "\n";
 
     for (const Person& p : students) {
-        std::cout << p << "\n";
+        std::cout << std::left << std::setw(12) << p.getFirstName()
+                  << std::setw(14) << p.getLastName() << std::right
+                  << std::fixed << std::setprecision(2);
+        if (c != 'm' && c != 'M') std::cout << std::setw(14) << p.averageGrade();
+        if (c == 'b' || c == 'B') std::cout << " |";
+        if (c != 'a' && c != 'A') std::cout << std::setw(14) << p.medianGrade();
+        std::cout << "\n";
     }
-
     return 0;
 }
