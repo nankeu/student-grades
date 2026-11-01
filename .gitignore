@@ -1,0 +1,12 @@
+# Student data files (too big for GitHub)
+*.txt
+
+# Compiled files
+bin/
+obj/
+*.exe
+*.o
+
+# Code::Blocks personal files
+*.layout
+*.depend
